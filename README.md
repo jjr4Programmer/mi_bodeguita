@@ -1,16 +1,5 @@
-# mi_bodeguita
+# Mi bodeguita
 
-A new Flutter project.
+Proyecto con el cual se podrá tener un control de los clientes a los cuales se les da fiado productos de su tienda. 
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Se tendrá un histórico de los distintos pedido y pagos del cliente.
