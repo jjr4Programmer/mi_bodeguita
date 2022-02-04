@@ -4,3 +4,4 @@ export 'cliente.dart';
 export 'producto.dart';
 export 'carrito.dart';
 export 'evento.dart';
+export 'compra.dart';

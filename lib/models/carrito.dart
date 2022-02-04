@@ -2,6 +2,7 @@ import 'package:mi_bodeguita/models/models.dart';
 
 class CarritoModel {
   static List<Pedido> _pedidos = [];
+  static Cliente cliente;
 
   CarritoModel();
 
@@ -24,5 +25,29 @@ class CarritoModel {
       total += pedido.producto.precio * pedido.cantidad;
     }
     return total;
+  }
+
+  static grabarcompra() {
+    if (cliente == null) {
+      throw Exception('No hay cliente');
+    }
+    //Grabamos la compra en el cliente
+    double total = 0;
+    for (Pedido p in _pedidos) {
+      total += p.producto.precio * p.cantidad;
+    }
+    cliente.deuda += total;
+    cliente.updateOnDb();
+    // Grabamos compra
+    Compra compra = Compra(cliente, total, _pedidos);
+    compra.grabar().whenComplete(() {
+      for (Pedido p in _pedidos) {
+        p.compra = compra;
+        p.grabar();
+      }
+      // Limpiar carrito
+      cliente = null;
+      _pedidos.clear();
+    });
   }
 }

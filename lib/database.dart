@@ -8,27 +8,25 @@ class BodegaDatabase {
   init() async {
     if (chelitappDb == null) {
       chelitappDb = await openDatabase('mi_bodeguita.db',
-          version: 4, onCreate: _onCreate, onUpgrade: _onUpgrade);
+          version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
     }
   }
 
   _onUpgrade(Database db, int oldVersion, int newVersion) {
-    if (oldVersion < newVersion) {
-      // you can execute drop table and create table
-      db.execute(
-          "CREATE TABLE producto (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, precio REAL NOT NULL, descripcion TEXT, imagen TEXT, stock INTEGER)");
-    }
+    if (oldVersion < newVersion) {}
   }
 
   _onCreate(Database db, int version) {
     db.execute(
         "CREATE TABLE cliente (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, deuda REAL)");
     db.execute(
-        "CREATE TABLE pedido (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER NOT NULL, cantidad INTEGER, costo REAL, fecha TEXT, hora TEXT)");
+        "CREATE TABLE producto (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, precio REAL NOT NULL, descripcion TEXT, imagen TEXT, stock INTEGER)");
+    db.execute(
+        "CREATE TABLE pedido (id INTEGER PRIMARY KEY AUTOINCREMENT, compra_id INTEGER NOT NULL, cantidad INTEGER, producto_id INTEGER, FOREIGN KEY(producto_id) REFERENCES producto(id))");
     db.execute(
         "CREATE TABLE pago (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER NOT NULL, monto REAL, fecha TEXT, hora TEXT)");
     db.execute(
-        "CREATE TABLE producto (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, precio REAL NOT NULL, descripcion TEXT, imagen TEXT, stock INTEGER)");
+        "CREATE TABLE compra (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER NOT NULL, monto REAL NOT NULL, fecha TEXT, hora TEXT)");
   }
 
   Future insertCliente(Cliente cliente) async {
@@ -51,19 +49,24 @@ class BodegaDatabase {
     chelitappDb.delete("pago", where: "id=?", whereArgs: [pago.id]);
   }
 
-  Future<List<dynamic>> getAllEventosCliente(int idCliente) async {
-    List<Map<String, dynamic>> resultsPed = await chelitappDb
-        .query("pedido", where: "cliente_id=?", whereArgs: [idCliente]);
-    List<Pedido> pedidos =
-        resultsPed.map((map) => Pedido.fromMap(map)).toList();
+  Future<int> insertCompra(Compra compra) async {
+    int id = await chelitappDb.insert("compra", compra.toMap());
+    return id;
+  }
+
+  Future deleteCompra(Compra compra) async {
+    chelitappDb.delete("compra", where: "id=?", whereArgs: [compra.id]);
+  }
+
+  Future insertPago(Pago pago) async {
+    chelitappDb.insert("pago", pago.toMap());
+  }
+
+  Future<List<Pago>> getPagosCliente(int idCliente) async {
     List<Map<String, dynamic>> resultsPag = await chelitappDb
         .query("pago", where: "cliente_id=?", whereArgs: [idCliente]);
     List<Pago> pagos = resultsPag.map((map) => Pago.fromMap(map)).toList();
-    var eventos = new List.empty(growable: true);
-    eventos.addAll(pedidos);
-    eventos.addAll(pagos);
-    eventos.sort((a, b) => (a.fecha + a.hora).compareTo(b.fecha + b.hora));
-    return eventos;
+    return pagos;
   }
 
   Future<List<Cliente>> getAllClientes() async {
@@ -71,25 +74,36 @@ class BodegaDatabase {
     return results.map((map) => Cliente.fromMap(map)).toList();
   }
 
-  Future<List<Cliente>> getCliente(int idCliente) async {
+  Future<Cliente> getCliente(int idCliente) async {
     List<Map<String, dynamic>> results = await chelitappDb
         .query("cliente", where: "id=?", whereArgs: [idCliente]);
-    return results.map((map) => Cliente.fromMap(map)).toList();
+    return results.map((map) => Cliente.fromMap(map)).toList()[0];
   }
 
-  Future<List<Pedido>> getPedidosCliente(int idCliente) async {
+  Future<List<Pedido>> getPedidosFromCompra(Compra compra) async {
     List<Map<String, dynamic>> results = await chelitappDb
-        .query("pedido", where: "cliente_id=?", whereArgs: [idCliente]);
+        .query("pedido", where: "compra_id=?", whereArgs: [compra.id]);
     return results.map((map) => Pedido.fromMap(map)).toList();
+  }
+
+  Future<List<Compra>> getComprasFromCliente(Cliente cliente) async {
+    List<Map<String, dynamic>> results = await chelitappDb
+        .query("compra", where: "cliente_id=?", whereArgs: [cliente.id]);
+    List<Compra> compras = results.map((map) => Compra.fromMap(map)).toList();
+    for (Compra compra in compras) {
+      List<Pedido> pedidos = await getPedidosFromCompra(compra);
+      for (Pedido pedido in pedidos) {
+        pedido.producto = await getProducto(pedido.idProducto);
+      }
+      compra.pedidos = pedidos;
+      compra.cliente = cliente;
+    }
+    return compras;
   }
 
   Future updateCliente(Cliente cliente) async {
     chelitappDb.update("cliente", cliente.toMap(),
         where: "id=?", whereArgs: [cliente.id]);
-  }
-
-  insertPago(Pago pago) {
-    chelitappDb.insert("pago", pago.toMap());
   }
 
   Future<List<Producto>> getAllProductos() async {

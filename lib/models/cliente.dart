@@ -1,7 +1,10 @@
+import 'package:mi_bodeguita/database.dart';
+
 class Cliente {
   String nombre;
   int id;
   double deuda = 0.0;
+  BodegaDatabase _bd = BodegaDatabase();
 
   Cliente(String nombre) {
     this.nombre = nombre;
@@ -15,5 +18,9 @@ class Cliente {
     this.deuda = map['deuda'];
     this.nombre = map['nombre'];
     this.id = map['id'];
+  }
+
+  void updateOnDb() {
+    _bd.updateCliente(this);
   }
 }

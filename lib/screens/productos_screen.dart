@@ -160,7 +160,7 @@ class ProductoWidget extends StatelessWidget {
                 child: Icon(Icons.add_shopping_cart_rounded),
                 onPressed: () {
                   try {
-                    CarritoModel.addPedido(Pedido(cliente.id, 1, producto));
+                    CarritoModel.addPedido(Pedido(cliente, 1, producto));
                     showSnack(
                         context, '${producto.nombre} agregado al carrito');
                   } on Exception catch (e) {

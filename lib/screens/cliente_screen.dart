@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mi_bodeguita/database.dart';
@@ -17,12 +15,9 @@ class ClienteScreen extends StatefulWidget {
 }
 
 class _ClienteScreen extends State<ClienteScreen> {
-  FutureOr _stateUpdate(dynamic value) {
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
+    CarritoModel.cliente = widget.cliente;
     return Scaffold(
         appBar: AppBar(
           leading: IconButton(
@@ -33,54 +28,47 @@ class _ClienteScreen extends State<ClienteScreen> {
           ),
           title: Text(widget.title),
         ),
-        body: showListPedidosPagos(context, widget.cliente),
+        body: FutureBuilder(
+          future: widget.db.getComprasFromCliente(widget.cliente),
+          builder:
+              (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              if (snapshot.hasData) {
+                if (snapshot.data.isEmpty) {
+                  return Center(
+                    child: Text("No registra compras"),
+                  );
+                }
+                return ListView.builder(
+                  itemCount: snapshot.data.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return compraWidget(snapshot.data[index] as Compra);
+                  },
+                );
+              } else {
+                return Center(
+                  child: Text("Error al obtener compras"),
+                );
+              }
+            } else {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+          },
+        ),
         floatingActionButton: FloatingActionButton(
           child: Icon(Icons.add),
           onPressed: () {
             Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) =>
-                        ProductosScreen(cliente: widget.cliente)));
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            ProductosScreen(cliente: widget.cliente)))
+                .whenComplete(() => setState(() {}));
           },
         ));
   }
-
-  /* _addPedido() {
-    TextEditingController _controller = TextEditingController();
-    Cliente cliente = widget.cliente;
-    showDialog(
-        context: context,
-        builder: (context) {
-          return SimpleDialog(
-            children: <Widget>[
-              TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                    icon: Icon(Icons.liquor),
-                    labelText: "Cantidad de cervezas"),
-                keyboardType: TextInputType.number,
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.digitsOnly
-                ],
-              ),
-              ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      Pedido pedido =
-                          Pedido(cliente.id, int.parse(_controller.text));
-                      widget.db.insertPedido(pedido);
-                      cliente.deuda += pedido.monto;
-                      widget.db.updateCliente(cliente);
-                      Navigator.pop(context);
-                    });
-                  },
-                  child: Text("Agregar"))
-            ],
-          );
-        });
-  }
- */
 
   _addPago() {
     Cliente cliente = widget.cliente;
@@ -112,70 +100,69 @@ class _ClienteScreen extends State<ClienteScreen> {
         });
   }
 
-  showListPedidosPagos(BuildContext context, Cliente cliente) {
-    return FutureBuilder(
-      future: widget.db.getAllEventosCliente(cliente.id),
-      builder: (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.hasData) {
-            if (snapshot.data.length == 0) {
-              return Center(
-                child: Text("No registra pedidos o pagos"),
-              );
-            }
-            ListView view = ListView(
-              children: <Widget>[
-                for (Evento ev in snapshot.data)
-                  if (ev.tipo == 'pedido')
-                    OutlinedButton(
-                      child: Text(
-                        'Cervezas: ' +
-                            ev.cantidad.toString() +
-                            ' / ' +
-                            ev.getFecha() +
-                            ' ' +
-                            ev.hora,
-                        style: TextStyle(fontSize: 15.0),
-                      ),
-                      onPressed: () {},
-                      onLongPress: () {
-                        _showDeletePedido(ev, cliente).then(_stateUpdate);
-                      },
-                    )
-                  else
-                    OutlinedButton(
-                      child: Text(
-                        'Pago: ' +
-                            ev.monto.toString() +
-                            ' / ' +
-                            ev.getFecha() +
-                            ' ' +
-                            ev.hora,
-                        style: TextStyle(fontSize: 18.0),
-                      ),
-                      onPressed: () {},
-                      onLongPress: () {
-                        _showDeletePago(ev, cliente).then(_stateUpdate);
-                      },
-                    ),
+  compraWidget(Compra compra) {
+    return Card(
+      margin: EdgeInsets.fromLTRB(15, 10, 15, 0),
+      elevation: 10,
+      child: Column(
+        children: [
+          ListTile(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Compra: ${compra.monto}"),
+                Text("Fecha: ${compra.fecha}"),
               ],
-            );
-            return view;
-          } else {
-            return Center(
-              child: Text("Sin Pedidos"),
-            );
-          }
-        } else {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-      },
+            ),
+            leading: IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () {
+                setState(() {
+                  widget.db.deleteCompra(compra);
+                  widget.cliente.deuda -= compra.monto;
+                  widget.db.updateCliente(widget.cliente);
+                });
+              },
+            ),
+          ),
+          Divider(
+            height: 10,
+            thickness: 2,
+            indent: 10,
+            endIndent: 10,
+          ),
+          Wrap(
+            spacing: 10,
+            children: [
+              for (Pedido pedido in compra.pedidos) ...[
+                Container(
+                  margin: EdgeInsets.fromLTRB(15, 5, 15, 5),
+                  padding: EdgeInsets.fromLTRB(15, 5, 15, 5),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text("${pedido.producto.nombre} (${pedido.cantidad})")
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          Divider(
+            height: 10,
+            thickness: 2,
+            indent: 10,
+            endIndent: 10,
+          ),
+        ],
+      ),
     );
   }
 
-  Future<void> _showDeletePedido(Pedido pedido, Cliente cliente) async {
+  /* Future<void> _showDeletePedido(Pedido pedido, Cliente cliente) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
@@ -251,7 +238,7 @@ class _ClienteScreen extends State<ClienteScreen> {
       },
     );
   }
-
+ */
   /* _addPedido2() {
     Cliente cliente = widget.cliente;
     double pCerveza = 6.0;

@@ -41,7 +41,11 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 ),
                 ElevatedButton(
                   child: Text('Comprar'),
-                  onPressed: () {},
+                  onPressed: () {
+                    CarritoModel.grabarcompra();
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  },
                 )
               ],
             ),
