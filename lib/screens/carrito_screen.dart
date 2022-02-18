@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_bodeguita/models/models.dart';
+import 'package:mi_bodeguita/utils.dart';
 
 class CarritoScreen extends StatefulWidget {
   CarritoScreen({Key key}) : super(key: key);
@@ -15,48 +16,67 @@ class _CarritoScreenState extends State<CarritoScreen> {
       appBar: AppBar(
         title: const Text('Carrito de compras'),
       ),
-      body: Stack(children: [
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              for (Pedido pedido in CarritoModel.pedidos) ...[
-                getPedidoWidget(pedido),
-              ]
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: 0,
-          child: Container(
-            padding: EdgeInsets.all(10),
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height * 0.1,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Column(children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.75,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Text(
-                  'Total: S/ ${CarritoModel.total}',
-                  style: TextStyle(fontSize: 20),
-                ),
-                ElevatedButton(
-                  child: Text('Comprar'),
-                  onPressed: () {
-                    CarritoModel.grabarcompra();
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pop();
-                  },
-                )
+                if (CarritoModel.pedidos.isEmpty) ...{
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        "Sin pedidos",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                    ),
+                  )
+                } else ...{
+                  for (Pedido pedido in CarritoModel.pedidos) ...{
+                    getPedidoWidget(pedido),
+                  }
+                }
               ],
             ),
           ),
-        )
+        ),
+        Container(
+          padding: EdgeInsets.all(10),
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height * 0.1,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(
+                'Total: S/ ${CarritoModel.total}',
+                style: TextStyle(fontSize: 20),
+              ),
+              ElevatedButton(
+                child: Text('Comprar'),
+                onPressed: () {
+                  try {
+                    CarritoModel.grabarcompra();
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                  } on Exception catch (e) {
+                    showSnack(context, e.toString());
+                  }
+                },
+              )
+            ],
+          ),
+        ),
       ]),
     );
   }
 
   getPedidoWidget(Pedido pedido) {
     return Card(
+      shadowColor: Colors.blue,
+      elevation: 5,
+      margin: EdgeInsets.fromLTRB(10, 10, 10, 0),
       child: Column(
         children: <Widget>[
           ListTile(

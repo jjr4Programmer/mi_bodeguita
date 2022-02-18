@@ -1,3 +1,5 @@
+import 'package:mi_bodeguita/database.dart';
+
 class Producto {
   final int id;
   final String nombre;
@@ -5,6 +7,7 @@ class Producto {
   final double precio;
   final String imagen;
   int stock;
+  BodegaDatabase _bd = BodegaDatabase();
 
   Producto(
       {this.id,
@@ -32,4 +35,8 @@ class Producto {
         precio = json['precio'],
         imagen = json['imagen'],
         stock = json['stock'];
+
+  void updateOnDb() {
+    _bd.updateProducto(this);
+  }
 }

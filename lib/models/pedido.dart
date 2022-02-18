@@ -28,5 +28,7 @@ class Pedido {
 
   void grabar() {
     _bd.insertPedido(this);
+    producto.stock -= cantidad;
+    producto.updateOnDb();
   }
 }

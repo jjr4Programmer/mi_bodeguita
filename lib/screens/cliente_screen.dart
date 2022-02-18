@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mi_bodeguita/database.dart';
 import 'package:mi_bodeguita/models/models.dart';
 import 'package:mi_bodeguita/screens/productos_screen.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 class ClienteScreen extends StatefulWidget {
   ClienteScreen({Key key, this.title, this.cliente, this.db}) : super(key: key);
@@ -19,65 +20,96 @@ class _ClienteScreen extends State<ClienteScreen> {
   Widget build(BuildContext context) {
     CarritoModel.cliente = widget.cliente;
     return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-          title: Text(widget.title),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
-        body: FutureBuilder(
-          future: widget.db.getComprasFromCliente(widget.cliente),
-          builder:
-              (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              if (snapshot.hasData) {
-                if (snapshot.data.isEmpty) {
-                  return Center(
-                    child: Text("No registra compras"),
-                  );
-                }
-                return ListView.builder(
-                  itemCount: snapshot.data.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return compraWidget(snapshot.data[index] as Compra);
-                  },
-                );
-              } else {
+        title: Text(widget.title),
+      ),
+      body: FutureBuilder(
+        future: widget.db.getComprasPagosFromCliente(widget.cliente),
+        builder: (BuildContext context, AsyncSnapshot<List<dynamic>> snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            if (snapshot.hasData) {
+              if (snapshot.data.isEmpty) {
                 return Center(
-                  child: Text("Error al obtener compras"),
+                  child: Text("No registra compras"),
                 );
               }
+              return ListView.builder(
+                itemCount: snapshot.data.length,
+                itemBuilder: (BuildContext context, int index) {
+                  if (snapshot.data[index] is Compra) {
+                    return compraWidget(snapshot.data[index]);
+                  } else {
+                    return pagoWidget(snapshot.data[index] as Pago);
+                  }
+                },
+              );
             } else {
               return Center(
-                child: CircularProgressIndicator(),
+                child: Text("Error al obtener compras"),
               );
             }
-          },
-        ),
-        floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.add),
-          onPressed: () {
-            Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) =>
-                            ProductosScreen(cliente: widget.cliente)))
-                .whenComplete(() => setState(() {}));
-          },
-        ));
+          } else {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
+      ),
+      floatingActionButton: SpeedDial(
+        animatedIcon: AnimatedIcons.menu_close,
+        animatedIconTheme: IconThemeData(size: 35.0),
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        heroTag: 'speed-dial-hero-tag',
+        elevation: 8.0,
+        backgroundColor: Colors.cyan,
+        children: [
+          SpeedDialChild(
+            labelBackgroundColor: Colors.cyan,
+            child: Icon(
+              Icons.shopping_cart,
+            ),
+            backgroundColor: Colors.deepOrange,
+            foregroundColor: Colors.white,
+            label: 'Nueva compra',
+            onTap: () {
+              Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              ProductosScreen(cliente: widget.cliente)))
+                  .whenComplete(() => setState(() {}));
+            },
+          ),
+          SpeedDialChild(
+            labelBackgroundColor: Colors.cyan,
+            child: Icon(Icons.payments_sharp),
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+            label: 'Agregar pago',
+            onTap: () => _addPago(),
+          ),
+        ],
+      ),
+    );
   }
 
   _addPago() {
     Cliente cliente = widget.cliente;
+    TextEditingController pagoC = TextEditingController();
     showDialog(
         context: context,
         builder: (context) {
           return SimpleDialog(
             children: <Widget>[
               TextField(
+                controller: pagoC,
                 decoration: new InputDecoration(
                     icon: Icon(Icons.monetization_on_outlined),
                     labelText: "Ingrese monto"),
@@ -85,15 +117,21 @@ class _ClienteScreen extends State<ClienteScreen> {
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.digitsOnly
                 ],
-                onSubmitted: (text) {
-                  setState(() {
-                    Pago pago = Pago(cliente.id, double.parse(text));
-                    widget.db.insertPago(pago);
-                    cliente.deuda -= pago.monto;
-                    widget.db.updateCliente(cliente);
-                    Navigator.pop(context);
-                  });
-                },
+              ),
+              Container(
+                padding: EdgeInsets.all(10),
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      Pago pago = Pago(cliente.id, double.parse(pagoC.text));
+                      widget.db.insertPago(pago);
+                      cliente.deuda -= pago.monto;
+                      widget.db.updateCliente(cliente);
+                      Navigator.pop(context);
+                    });
+                  },
+                  child: const Text("Agregar pago"),
+                ),
               )
             ],
           );
@@ -111,18 +149,12 @@ class _ClienteScreen extends State<ClienteScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("Compra: ${compra.monto}"),
-                Text("Fecha: ${compra.fecha}"),
+                Text("Fecha: ${compra.fecha} ${compra.hora}"),
               ],
             ),
             leading: IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () {
-                setState(() {
-                  widget.db.deleteCompra(compra);
-                  widget.cliente.deuda -= compra.monto;
-                  widget.db.updateCliente(widget.cliente);
-                });
-              },
+              onPressed: () => _showDeleteCompra(compra),
             ),
           ),
           Divider(
@@ -162,7 +194,49 @@ class _ClienteScreen extends State<ClienteScreen> {
     );
   }
 
-  /* Future<void> _showDeletePedido(Pedido pedido, Cliente cliente) async {
+  Widget pagoWidget(Pago pago) {
+    return Card(
+        color: Colors.blue.shade100,
+        margin: EdgeInsets.fromLTRB(15, 10, 15, 0),
+        elevation: 10,
+        child: Column(
+          children: [
+            ListTile(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.monetization_on_outlined,
+                        size: 25,
+                        color: Colors.blue,
+                      ),
+                      Text(" ${pago.monto}"),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 25,
+                        color: Colors.blue,
+                      ),
+                      Text(" ${pago.fecha} ${pago.hora}"),
+                    ],
+                  ),
+                ],
+              ),
+              leading: IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () => _showDeletePago(pago),
+              ),
+            ),
+          ],
+        ));
+  }
+
+  Future<void> _showDeleteCompra(Compra compra) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
@@ -172,7 +246,7 @@ class _ClienteScreen extends State<ClienteScreen> {
           content: SingleChildScrollView(
             child: Column(
               children: <Widget>[
-                Text('Está segura que desea eliminar el pedido?'),
+                Text('Está segura que desea eliminar la compra?'),
               ],
             ),
           ),
@@ -180,11 +254,10 @@ class _ClienteScreen extends State<ClienteScreen> {
             TextButton(
               child: Text('Eliminar'),
               onPressed: () {
-                print(" ------ Monto: " + pedido.monto.toString());
                 setState(() {
-                  cliente.deuda -= pedido.monto;
-                  widget.db.updateCliente(cliente);
-                  widget.db.deletePedido(pedido);
+                  widget.db.deleteCompra(compra);
+                  compra.cliente.deuda -= compra.monto;
+                  widget.db.updateCliente(compra.cliente);
                   Navigator.of(context).pop();
                 });
               },
@@ -201,7 +274,7 @@ class _ClienteScreen extends State<ClienteScreen> {
     );
   }
 
-  Future<void> _showDeletePago(Pago pago, Cliente cliente) async {
+  Future<void> _showDeletePago(Pago pago) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
@@ -220,9 +293,9 @@ class _ClienteScreen extends State<ClienteScreen> {
               child: Text('Eliminar'),
               onPressed: () {
                 setState(() {
-                  cliente.deuda += pago.monto;
-                  widget.db.updateCliente(cliente);
                   widget.db.deletePago(pago);
+                  widget.cliente.deuda += pago.monto;
+                  widget.db.updateCliente(widget.cliente);
                   Navigator.of(context).pop();
                 });
               },
@@ -238,62 +311,4 @@ class _ClienteScreen extends State<ClienteScreen> {
       },
     );
   }
- */
-  /* _addPedido2() {
-    Cliente cliente = widget.cliente;
-    double pCerveza = 6.0;
-    int cantidad = 0;
-    Alert(
-        context: context,
-        title: "Nuedo pedido",
-        content: Column(
-          children: <Widget>[
-            TextField(
-              decoration: InputDecoration(
-                  icon: Icon(Icons.liquor), labelText: "Cantidad de cervezas"),
-              keyboardType: TextInputType.number,
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.digitsOnly
-              ],
-              onChanged: (text) {
-                setState(() {
-                  cantidad = text != '' ? int.parse(text) : 0;
-                });
-              },
-            ),
-            TextField(
-              controller: TextEditingController(text: pCerveza.toString()),
-              decoration: InputDecoration(
-                  icon: Icon(Icons.monetization_on_outlined),
-                  labelText: "Precio"),
-              keyboardType: TextInputType.number,
-              onChanged: (text) {
-                setState(() {
-                  pCerveza = text != '' ? double.parse(text) : 0.0;
-                });
-              },
-            ),
-          ],
-        ),
-        buttons: [
-          DialogButton(
-            onPressed: () {
-              setState(() {
-                if (cantidad > 0 && pCerveza > 0) {
-                  Pedido pedido = Pedido(cliente.id, cantidad, pCerveza);
-                  widget.db.insertPedido(pedido);
-                  cliente.deuda += pCerveza * cantidad;
-                  widget.db.updateCliente(cliente);
-                  Navigator.pop(context);
-                }
-              });
-            },
-            child: Text(
-              "Agregar pedido",
-              style: TextStyle(color: Colors.white, fontSize: 20),
-            ),
-          )
-        ]).show();
-  }
- */
 }

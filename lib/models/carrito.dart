@@ -31,6 +31,9 @@ class CarritoModel {
     if (cliente == null) {
       throw Exception('No hay cliente');
     }
+    if (_pedidos.isEmpty) {
+      throw Exception('No hay pedidos');
+    }
     //Grabamos la compra en el cliente
     double total = 0;
     for (Pedido p in _pedidos) {

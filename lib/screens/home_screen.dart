@@ -40,8 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
           onPressed: _addClient,
-          tooltip: 'Increment',
-          icon: Icon(Icons.add),
+          tooltip: 'Agregar nuevo cliente',
+          icon: Icon(Icons.person_add),
           label: Text(
               'Nuevo cliente')), // This trailing comma makes auto-formatting nicer for build methods.
     );
@@ -90,12 +90,17 @@ class _HomeScreenState extends State<HomeScreen> {
           return ListView(
             children: <Widget>[
               for (Cliente cliente in snapshot.data)
-                OutlinedButton(
-                  child: Text(
-                    cliente.nombre + ' / Deuda: ' + cliente.deuda.toString(),
-                    style: TextStyle(fontSize: 20.0),
+                InkWell(
+                  child: Card(
+                    margin: EdgeInsets.fromLTRB(25, 10, 25, 0),
+                    elevation: 5,
+                    child: ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text(cliente.nombre),
+                      subtitle: Text("Deuda: " + cliente.deuda.toString()),
+                    ),
                   ),
-                  onPressed: () {
+                  onTap: () {
                     Route route = MaterialPageRoute(
                         builder: (context) => ClienteScreen(
                               title: 'Cliente ' + cliente.nombre,

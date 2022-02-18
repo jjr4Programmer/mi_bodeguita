@@ -62,9 +62,9 @@ class BodegaDatabase {
     chelitappDb.insert("pago", pago.toMap());
   }
 
-  Future<List<Pago>> getPagosCliente(int idCliente) async {
+  Future<List<Pago>> getPagosFromCliente(Cliente cliente) async {
     List<Map<String, dynamic>> resultsPag = await chelitappDb
-        .query("pago", where: "cliente_id=?", whereArgs: [idCliente]);
+        .query("pago", where: "cliente_id=?", whereArgs: [cliente.id]);
     List<Pago> pagos = resultsPag.map((map) => Pago.fromMap(map)).toList();
     return pagos;
   }
@@ -99,6 +99,16 @@ class BodegaDatabase {
       compra.cliente = cliente;
     }
     return compras;
+  }
+
+  Future<List<dynamic>> getComprasPagosFromCliente(Cliente cliente) async {
+    List<Compra> compras = await getComprasFromCliente(cliente);
+    List<Pago> pagos = await getPagosFromCliente(cliente);
+    List<dynamic> comprasPagos = [];
+    comprasPagos.addAll(compras);
+    comprasPagos.addAll(pagos);
+    comprasPagos.sort((a, b) => a.compareTo(b));
+    return comprasPagos;
   }
 
   Future updateCliente(Cliente cliente) async {

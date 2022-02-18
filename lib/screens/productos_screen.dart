@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_bodeguita/screens/carrito_screen.dart';
+import 'package:mi_bodeguita/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:mi_bodeguita/models/models.dart';
 import 'package:mi_bodeguita/provider/producto_provider.dart';
@@ -191,15 +192,6 @@ class ProductoWidget extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void showSnack(BuildContext context, String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(text),
-      duration: Duration(seconds: 2),
-      elevation: 10,
-      backgroundColor: Colors.cyan,
-    ));
   }
 
   void showEditProductoDialog(BuildContext context, Producto producto) {}
